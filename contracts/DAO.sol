@@ -17,7 +17,6 @@ contract DAO is AccessControl {
     struct Vote {
         uint256 weight;
         uint256 decision;
-        bool participated;
     }
 
     struct Proposal {
@@ -91,7 +90,6 @@ contract DAO is AccessControl {
         onlyRole(CHAIRMAN_ROLE)
         returns (uint256 proposalId) 
     {
-
         proposalId = numProposals++;
         Proposal storage prop = proposals[proposalId];
         prop.target = target;
@@ -111,7 +109,7 @@ contract DAO is AccessControl {
         require(block.timestamp < prop.startingTime + votingPeriod, "The voting is over");
 
         Vote storage v = votes[proposalId][msg.sender];    
-        require(!v.participated, "You can vote only once");
+        require(v.weight == 0, "You can vote only once");
 
         uint256 weight = balances[msg.sender];
 
@@ -124,13 +122,7 @@ contract DAO is AccessControl {
         }
 
         v.decision = decision;
-        v.participated = true;
-
-        if (prop.startingTime + votingPeriod > withdrawLock[msg.sender]) {
-            withdrawLock[msg.sender] = prop.startingTime + votingPeriod;
-        } else {
-            withdrawLock[msg.sender] = withdrawLock[msg.sender];
-        }
+        withdrawLock[msg.sender] = prop.startingTime + votingPeriod;
 
         emit Voted(proposalId, msg.sender, decision);
     }

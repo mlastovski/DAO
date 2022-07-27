@@ -172,7 +172,7 @@ describe("DAO", function () {
       .to.emit(dao, "Voted")
       .withArgs(1, owner.address, 1);
 
-      await ethers.provider.send('evm_increaseTime', [0.5 * days]);
+      await ethers.provider.send('evm_increaseTime', [0.9 * days]);
       await ethers.provider.send('evm_mine', []);
 
       expect(await dao.vote(2, 1))
@@ -198,6 +198,59 @@ describe("DAO", function () {
     it("Should fail to vote (You can vote only once)", async function () {
       await dao.vote(1, 1);
       await expect(dao.vote(1, 1)).to.be.revertedWith("You can vote only once");
+    });
+  });
+
+  describe("finish", function () {
+    beforeEach(async function () {
+      await dao.addProposal(token.address, callData, description);
+      await dao.addProposal(token.address, callData, description);
+      await dao.addProposal(token.address, "0x", description);
+
+      await token.approve(dao.address, parseEther("6000"));
+      await dao.deposit(parseEther("6000"));
+      await token.connect(addr1).approve(dao.address, parseEther("6000"));
+      await dao.connect(addr1).deposit(parseEther("6000"));
+    });
+
+    it("Should finish properly with correct calldata", async function () {
+      await dao.vote(1, 1);
+      await dao.connect(addr1).vote(1, 1);
+
+      await ethers.provider.send('evm_increaseTime', [2 * days]);
+      await ethers.provider.send('evm_mine', []);
+
+      expect(await dao.connect(addr2).finish(1)).to.emit(dao, "VotingFinished").withArgs(1, true);
+      expect(await token.hasRole(MINTER_ROLE, addr2.address)).to.equal(true);
+    });
+
+    it("Should finish properly with wrong calldata", async function () {
+      await dao.vote(3, 1);
+      await dao.connect(addr1).vote(3, 1);
+
+      await ethers.provider.send('evm_increaseTime', [2 * days]);
+      await ethers.provider.send('evm_mine', []);
+
+      expect(await dao.connect(addr2).finish(1)).to.emit(dao, "VotingFinished").withArgs(3, false);
+    });
+
+    it("Should fail to finish (The voting is over)", async function () {
+      await dao.vote(1, 1);
+      await dao.connect(addr1).vote(1, 1);
+
+      await ethers.provider.send('evm_increaseTime', [2 * days]);
+      await ethers.provider.send('evm_mine', []);
+
+      expect(await dao.connect(addr2).finish(1)).to.emit(dao, "VotingFinished").withArgs(1, true);
+
+      await expect(dao.connect(addr2).finish(1)).to.be.revertedWith("The voting is over");
+    });
+
+    it("Should fail to finish (The voting is not over yet)", async function () {
+      await dao.vote(1, 1);
+      await dao.connect(addr1).vote(1, 1);
+
+      await expect(dao.connect(addr2).finish(1)).to.be.revertedWith("The voting is not over yet");
     });
   });
 });

@@ -25,13 +25,13 @@ contract Token is ERC20, AccessControl {
     }
 
     function initialize(address _dao) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        _revokeRole(DEFAULT_ADMIN_ROLE, msg.sender);
         dao = _dao;
         _setupRole(DEFAULT_ADMIN_ROLE, _dao);
+        _revokeRole(DEFAULT_ADMIN_ROLE, msg.sender);
     }
 
     function grantMinter(address to) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        _grantRole(MINTER_ROLE, to);
+        grantRole(MINTER_ROLE, to);
         numMinters++;
         emit MinterGranted(msg.sender, to);
     }
@@ -44,7 +44,7 @@ contract Token is ERC20, AccessControl {
     }
 
     function grantBurner(address to) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        _grantRole(BURNER_ROLE, to);
+        grantRole(BURNER_ROLE, to);
         numBurners++;
         emit BurnerGranted(msg.sender, to);
     }
