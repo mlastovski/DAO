@@ -10,8 +10,10 @@ import "@nomiclabs/hardhat-ethers";
 import "@nomicfoundation/hardhat-chai-matchers";
 import "hardhat-contract-sizer";
 import "hardhat-docgen";
-// import "./tasks/swap.ts";
-// import "./tasks/redeem.ts";
+import "./tasks/deposit.ts";
+import "./tasks/addproposal.ts";
+import "./tasks/vote.ts";
+import "./tasks/finish.ts";
 
 dotenv.config();
 
