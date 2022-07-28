@@ -1,6 +1,6 @@
 import { expect } from "chai";
 import { ethers } from "hardhat";
-import { BigNumber, Contract, ContractFactory } from "ethers";
+import { Contract, ContractFactory } from "ethers";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
 import { parseEther } from "ethers/lib/utils";
 
@@ -22,7 +22,6 @@ describe("DAO", function () {
   const DEFAULT_ADMIN_ROLE = ethers.constants.HashZero;
   const MINTER_ROLE = "0x9f2df0fed2c77648de5860a4cc508cd0818c85b8b8a1ab4ceeef8d981c8956a6";
   const BURNER_ROLE = "0x3c11d16cbaffd01df69ce1c404f6340ee057498f5f00246190ea54220576a848";
-  const CHAIRMAN_ROLE = "0xdc1958ce1178d6eb32ccc146dcea8933f1978155832913ec88fa509962e1b413";
 
   before(async function () {
     [owner, addr1, addr2] = await ethers.getSigners();
@@ -251,6 +250,84 @@ describe("DAO", function () {
       await dao.connect(addr1).vote(1, 1);
 
       await expect(dao.connect(addr2).finish(1)).to.be.revertedWith("The voting is not over yet");
+    });
+  });
+});
+
+describe("Token", function () {
+  let Token: ContractFactory;
+  let token: Contract;
+  let owner: SignerWithAddress;
+  let addr1: SignerWithAddress;
+  let addr2: SignerWithAddress;
+
+  const DEFAULT_ADMIN_ROLE = ethers.constants.HashZero;
+  const MINTER_ROLE = "0x9f2df0fed2c77648de5860a4cc508cd0818c85b8b8a1ab4ceeef8d981c8956a6";
+  const BURNER_ROLE = "0x3c11d16cbaffd01df69ce1c404f6340ee057498f5f00246190ea54220576a848";
+
+  before(async function () {
+    [owner, addr1, addr2] = await ethers.getSigners();
+
+    Token = await ethers.getContractFactory("Token");
+  });
+
+  beforeEach(async function () {
+    token = await Token.deploy("Crypton", "CRT");
+    await token.deployed();
+  });
+
+  describe("grantMinter", function () {
+    it("Should grant minter role to given address", async function () {
+      expect(await token.grantMinter(addr1.address))
+      .to.emit(token, "MinterGranted")
+      .withArgs(owner.address, addr1.address);
+    });
+  });
+
+  describe("revokeMinter", function () {
+    it("Should revoke minter role properly", async function () {
+      await token.grantMinter(owner.address);
+      await token.grantMinter(addr1.address);
+      expect(await token.revokeMinter(addr1.address))
+      .to.emit(token, "MinterRevoked")
+      .withArgs(owner.address, addr1.address);
+    });
+
+    it("Should fail to revoke minter role (Should be at least 1)", async function () {
+      await token.grantMinter(owner.address);
+      await expect(token.revokeMinter(owner.address)).to.be.revertedWith("Should be at least 1")
+    });
+  });
+
+  describe("grantBurner", function () {
+    it("Should grant burner role to given address", async function () {
+      expect(await token.grantBurner(addr1.address))
+      .to.emit(token, "BurnerGranted")
+      .withArgs(owner.address, addr1.address);
+    });
+  });
+
+  describe("revokeBurner", function () {
+    it("Should revoke burner role properly", async function () {
+      await token.grantBurner(owner.address);
+      await token.grantBurner(addr1.address);
+      expect(await token.revokeBurner(addr1.address))
+      .to.emit(token, "BurnerRevoked")
+      .withArgs(owner.address, addr1.address);
+    });
+
+    it("Should fail to revoke burner role (Should be at least 1)", async function () {
+      await token.grantBurner(owner.address);
+      await expect(token.revokeBurner(owner.address)).to.be.revertedWith("Should be at least 1")
+    });
+  });
+
+  describe("burn", function () {
+    it("Should burn properly", async function () {
+      await token.grantMinter(owner.address);
+      await token.grantBurner(owner.address);
+      await token.mint(addr1.address, 1000);
+      await token.burn(addr1.address, 1000);
     });
   });
 });
